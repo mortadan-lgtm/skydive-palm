@@ -553,6 +553,37 @@ math[display="block"]{margin:.5em 0;overflow-x:auto;overflow-y:hidden;max-width:
 .sim select{font:inherit;font-size:.95rem;padding:8px 10px;border-radius:10px;border:1px solid #D9DEE7;background:#fff;color:#1C1C1E;min-height:42px}
 .sim .ftnote{margin-top:8px;font-size:.92rem;color:#3D4250;min-height:1.2em}
 .sim .msvg{display:block;width:100%;height:auto;border-radius:10px}
+/* ---- full-screen hero that docks to a slim bar (Oct 2026) ---- */
+.scenewrap{position:relative;height:calc(100svh - 92px);min-height:340px;max-height:1100px;width:100vw;margin-left:calc(50% - 50vw);margin-bottom:12px}
+@media (max-width:700px){.scenewrap{height:62svh;min-height:300px}}
+.scenewrap .scene{position:absolute;inset:0;height:auto;border-radius:0;box-shadow:none}
+.scene.docked{position:fixed;inset:auto;top:0;left:0;right:0;height:96px;z-index:45;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.scene.docked .sctl,.scene.docked .sdown,.scene.docked .caption .alt{display:none}
+.scene.docked .caption{top:8px}
+.scene .caption{left:max(14px,calc(50vw - 540px));top:16px}
+.scene .stamp{right:max(16px,calc(50vw - 540px))}
+.scene .brack{right:max(12px,calc(50vw - 540px))}
+.sdown{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:6;border:0;border-radius:99px;padding:8px 16px;font:700 .9rem var(--font,system-ui);color:#fff;background:rgba(10,25,45,.6);backdrop-filter:blur(4px);cursor:pointer}
+.sdown:hover{background:rgba(10,25,45,.8)}
+.sctl{position:absolute;z-index:7;left:max(14px,calc(50vw - 540px));bottom:14px;width:min(340px,calc(100% - 28px));max-height:calc(100% - 70px);overflow:auto;background:rgba(10,25,45,.72);backdrop-filter:blur(6px);color:#fff;border-radius:14px;padding:10px 12px;font-size:.86rem;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.sctl-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.sctl-h b{font-size:.95rem;letter-spacing:.02em}
+.sctl-x{border:0;background:rgba(255,255,255,.15);color:#fff;width:28px;height:28px;border-radius:8px;font-size:1.1rem;line-height:1;cursor:pointer}
+.sctl.min .sctl-b,.sctl.min .sread{display:none}
+.sctl.min{width:auto}
+.sctl-b{display:grid;gap:8px}
+.srng{display:grid;gap:2px}
+.srng input{width:100%;accent-color:#FFD166}
+.sseg{display:flex;gap:4px;flex-wrap:wrap}
+.sseg button{flex:1;border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:9px;padding:6px 8px;font:600 .82rem var(--font,system-ui);cursor:pointer;min-height:34px}
+.sseg button[aria-checked="true"]{background:#FFD166;color:#1a1300;border-color:#FFD166}
+.sbtn{border:0;border-radius:9px;padding:8px 10px;font:700 .85rem var(--font,system-ui);background:#FFD166;color:#1a1300;cursor:pointer;min-height:36px}
+.sbtn.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.35)}
+.sread{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.2);font-weight:650;line-height:1.4;font-variant-numeric:tabular-nums}
+@media (max-width:700px){.sctl{left:8px;right:8px;width:auto;bottom:8px;max-height:58%;font-size:.8rem}.sdown{display:none}}
+.scene.wobble .story{animation:sdwob .7s ease-in-out;transform-box:fill-box;transform-origin:center}
+@keyframes sdwob{0%,100%{transform:rotate(0)}20%{transform:rotate(-4deg)}45%{transform:rotate(3.5deg)}70%{transform:rotate(-2deg)}}
+@media (prefers-reduced-motion: reduce){.scene.wobble .story{animation:none}}
 
 </style>
 </head>
@@ -1314,23 +1345,27 @@ function correctLine(item, res){
 }
 
 /* ---------- THEME: Skydive Palm. One jump over the Palm Jumeirah; the camera drops down a tall Canva sky
-   (4000 m to the beach) as the student moves through the stages. Each stage's story plays ONCE per arrival,
-   slowly, then holds its final frame; only clouds, wind streaks and the cruising plane's propellers loop.
-   1 cruise at constant velocity (balanced forces) · 2 the exit (a = g at the start) · 3 the free-body diagram ·
-   4 reaching terminal speed (live v-t graph) · 5 two divers dock (momentum conserved) · 6 the canopy opens
-   (lines in tension) · 7 a spiral turn (resultant towards the centre) · 8 landing (impulse, F-t pulse) ---------- */
+   (4000 m to the beach) as the student moves through the stages.
+   The scene fills the screen when a stage opens and docks to a slim bar as the student scrolls into the lesson.
+   Each stage's story plays ONCE per arrival, slowly, then holds its final frame. A "Try it" panel lets the
+   student change the physics: the story replays with their numbers, or a live simulation takes over.
+   1 cruise (thrust vs drag, live) · 2 the exit (a = g for any mass) · 3 free-body diagram (speed slider, live) ·
+   4 terminal speed (pose, live v-t) · 5 docking (masses and speeds) · 6 canopy opening (opening time) ·
+   7 spiral turn (radius and speed, live) · 8 landing (speed and knees, F-t pulse) ---------- */
 const THEME = (function(){
-  let el = null, svg = null, cur = -1, raf = null, t0 = 0, tNow = 0, held = {}, amb0 = performance.now(), camY = 0;
-  const VW = 800, VH = 230, NS = 8;
+  let el = null, wrap = null, svg = null, cur = -1, raf = null, t0 = 0, tNow = 0, held = {}, amb0 = performance.now(), camY = 0;
+  let mode = 'story', LS = null, lastT = 0, vb = [0, 0, 800, 230], docked = false, ambSpeed = 1;
+  const VW = 800, VH = 230, NS = 8, G = 9.8;
   const S = k => (typeof IMGS !== 'undefined' && IMGS['art_' + k]) || '';
   const ease = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
   const seg = (t, a, b) => Math.max(0, Math.min(1, (t - a) / (b - a)));
   const lerp = (a, b, f) => a + (b - a) * f;
+  const f1 = x => (Math.round(x * 10) / 10).toFixed(1), f0 = x => Math.round(x).toLocaleString('en-GB');
   const ALT = [4000, 4000, 3400, 2600, 2000, 1500, 700, 0];
-  /* sprite sizes in the 800 x 230 viewBox (aspect from the Canva art) */
+  /* sprite sizes in the 800 x 230 design box (aspect from the Canva art) */
   const SPR = {plane:[250, 126], diverA:[118, 79], diverB:[118, 79], chute:[150, 93], jumper:[52, 60]};
   const img = (k, id, w, h) => `<image data-k="${id}" href="${S(k)}" width="${w || SPR[k][0]}" height="${h || SPR[k][1]}" x="0" y="0" opacity="0"/>`;
-  function place(q, id, x, y, o){   /* x,y = centre; o: {s, r, a, fx} */
+  function place(q, id, x, y, o){   /* x,y = centre; o: {s, r, a, fx, sy} */
     const e = q(id); if (!e) return; o = o || {};
     const w = +e.getAttribute('width'), h = +e.getAttribute('height'), s = o.s || 1, fx = o.fx ? -1 : 1, sy = o.sy || 1;
     e.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${(o.r || 0).toFixed(1)}) scale(${(s * fx).toFixed(3)},${(s * sy).toFixed(3)}) translate(${-w / 2},${-h / 2})`);
@@ -1343,27 +1378,53 @@ const THEME = (function(){
       (lab ? `<text x="${(lx !== undefined ? lx : x2 + 6).toFixed(1)}" y="${(ly !== undefined ? ly : y2 + 4).toFixed(1)}" class="al" fill="${col}">${lab}</text>` : '');
   }
   const tag = (x, y, s, a) => a > 0.01 ? `<g opacity="${a.toFixed(2)}"><rect x="${x}" y="${y - 15}" width="${s.length * 7.1 + 18}" height="22" rx="11" fill="rgba(10,25,45,.72)"/><text x="${x + 9}" y="${y}" class="tg">${s}</text></g>` : '';
-  const RED = '#FF6B5E', BLUE = '#7FC4FF', GOLD = '#FFD166', GREEN = '#6EE7A8', WHITE = '#FFFFFF';
+  const RED = '#FF6B5E', BLUE = '#7FC4FF', GOLD = '#FFD166', GREEN = '#6EE7A8', WHITE = '#FFFFFF', LILAC = '#C9A7FF';
 
-  /* ---- the eight stations: build() makes the static layer, f(q, t) updates it ---- */
+  /* ---- shared physics for the interactive stations ---- */
+  const PLANE = {m: 6000, k: 4.8};                          /* drag = k v², 12 kN at 50 m s⁻¹ */
+  const POSE_K = [0.26, 0.085], DIVER_M = 80;               /* belly / head down, as in the fall sim */
+  const vtOf = k => Math.sqrt(DIVER_M * G / k);
+  const LAND_DT = [0.04, 0.25, 0.6], LAND_NAME = ['stiff legs', 'knees bent', 'a roll'], LAND_M = 90;
+
+  /* ---- the eight stations ----
+     build(): static layer · f(q, t, P): story frame · P0: control defaults · ctl: controls ·
+     live (optional): {init(P), step(S, dt, P), draw(q, S, P)} takes over after a control is used · read(P, S): readout */
   const ST = [
     {name:'In the plane', dur:12, wind:'h', build: () => img('plane', 'pl') + '<g data-k="ar"></g>',
+     P0: {T: 12}, ctl: [{k:'T', min:6, max:20, step:0.5, label:'Thrust', unit:'kN'}],
      f(q, t){
        const x = lerp(-180, 330, ease(seg(t, 0, 6.5))), y = 112 + 4 * Math.sin(t * 1.3);
        place(q, 'pl', x, y, {fx: true});
        const a = seg(t, 6.5, 8);
        q('ar').innerHTML = a ? `<g opacity="${a.toFixed(2)}">${arr(x + 120, y - 4, x + 175, y - 4, GOLD, 'thrust', x + 130, y - 12)}${arr(x - 118, y - 4, x - 173, y - 4, BLUE, 'drag', x - 170, y - 12)}${arr(x, y - 30, x, y - 85, GREEN, 'lift', x + 8, y - 76)}${arr(x, y + 40, x, y + 95, RED, 'weight', x + 8, y + 92)}</g>` + tag(470, 58, 'Constant velocity: resultant force = 0', seg(t, 8.5, 9.5)) : '';
-     }},
+     },
+     live: {
+       init: () => ({v: 50, t: 0}),
+       step(S, dt, P){ for (let i = 0; i < 6; i++) { const D = PLANE.k * S.v * S.v; S.v = Math.max(5, S.v + (P.T * 1000 - D) / PLANE.m * dt * 3 / 6); } S.t += dt; ambSpeed = S.v / 50; },
+       draw(q, S, P){
+         const x = 330, y = 112 + 4 * Math.sin(S.t * 1.3), D = PLANE.k * S.v * S.v / 1000, sc = 55 / 12;
+         place(q, 'pl', x, y, {fx: true});
+         const net = P.T - D, msg = Math.abs(net) < 0.15 ? 'Thrust = drag: constant velocity' : net > 0 ? 'Thrust > drag: accelerating, drag grows' : 'Thrust < drag: slowing down, drag shrinks';
+         q('ar').innerHTML = arr(x + 120, y - 4, x + 120 + P.T * sc, y - 4, GOLD, 'thrust', x + 130, y - 12) + arr(x - 118, y - 4, x - 118 - D * sc, y - 4, BLUE, 'drag', x - 128 - D * sc + 20, y - 12) +
+           arr(x, y - 30, x, y - 85, GREEN, 'lift', x + 8, y - 76) + arr(x, y + 40, x, y + 95, RED, 'weight', x + 8, y + 92) + tag(470, 58, msg, 1);
+       }},
+     read: (P, S) => { const v = S ? S.v : 50, D = PLANE.k * v * v / 1000, a = (P.T - D) * 1000 / PLANE.m; return `v = ${f0(v * 3.6)} km h⁻¹ · thrust ${f1(P.T)} kN · drag ${f1(D)} kN · a = ${a >= 0 ? '+' : '−'}${Math.abs(a).toFixed(2)} m s⁻²`; }},
+
     {name:'The exit', dur:13, wind:'h', build: () => img('plane', 'pl') + img('diverA', 'dv') + '<g data-k="ar"></g>',
-     f(q, t){
+     P0: {m: 80}, ctl: [{k:'m', min:50, max:120, step:5, label:'Mass with kit', unit:'kg'}, {btn:'Jump again'}],
+     f(q, t, P){
        const px = 330 + (t > 8 ? 160 * Math.pow(t - 8, 1.6) : 0), py = 70;
        place(q, 'pl', px, py, {fx: true});
-       const tj = Math.max(0, t - 2), out = t > 2;
+       const tj = Math.max(0, t - 2), out = t > 2, W = P.m * G;
        const dx = px - 14 - 26 * tj - (t > 8 ? 160 * Math.pow(t - 8, 1.6) : 0), dy = py + 18 + 3.2 * tj * tj;   /* falls with a = g at first; the plane flies on */
-       place(q, 'dv', dx, Math.min(dy, 140), {a: out ? 1 : 0, s: .85, r: lerp(25, 0, seg(t, 2, 6))});
-       q('ar').innerHTML = out ? arr(dx, Math.min(dy, 140) + 16, dx, Math.min(dy, 140) + 66, RED, 'mg', dx + 7, Math.min(dy, 140) + 60) + tag(20, 58, 'Leaving the door: only weight acts, so a = g = 9.8 m s⁻²', seg(t, 3, 4)) : '';
-     }},
+       const s = 0.7 + 0.3 * P.m / 80, yy = Math.min(dy, 140), L = 30 + 36 * P.m / 80;
+       place(q, 'dv', dx, yy, {a: out ? 1 : 0, s: .85 * s, r: lerp(25, 0, seg(t, 2, 6))});
+       q('ar').innerHTML = out ? arr(dx, yy + 16, dx, yy + 16 + L, RED, `mg = ${f0(W)} N`, dx + 7, yy + 10 + L) + tag(20, 58, `Only weight acts: a = mg/m = ${f0(W)}/${P.m} = 9.8 m s⁻²`, seg(t, 3, 4)) : '';
+     },
+     read: P => `m = ${P.m} kg · weight = ${f0(P.m * G)} N · a = 9.8 m s⁻² for every mass`},
+
     {name:'Freefall', dur:11, wind:'up', build: () => img('diverA', 'dv') + '<g data-k="ar"></g>',
+     P0: {v: 20}, ctl: [{k:'v', min:0, max:55, step:1, label:'Speed', unit:'m s⁻¹'}],
      f(q, t){
        const x = 330, y = 112 + 3 * Math.sin(t * 2);
        place(q, 'dv', x, y, {s: 1.15});
@@ -1371,10 +1432,23 @@ const THEME = (function(){
        let s = '';
        if (w) s += `<circle cx="${x}" cy="${y}" r="4" fill="${WHITE}"/>` + arr(x, y, x, y + 85 * ease(w), RED, 'weight', x + 8, y + 80);
        if (d) s += arr(x, y, x, y - 45 * ease(d), BLUE, 'air resistance', x + 8, y - 40);
-       if (r) s += arr(x + 110, y, x + 110, y + 40 * ease(r), '#C9A7FF', 'resultant', x + 118, y + 38);
+       if (r) s += arr(x + 110, y, x + 110, y + 40 * ease(r), LILAC, 'resultant', x + 118, y + 38);
        q('ar').innerHTML = s + tag(470, 58, 'Free-body diagram: forces ON the diver only', seg(t, 2, 3)) + tag(470, 84, 'Weight > drag: still accelerating', seg(t, 8.5, 9.5));
-     }},
+     },
+     live: {
+       init: () => ({t: 0}),
+       step(S, dt, P){ S.t += dt; ambSpeed = 0.3 + P.v / 55; },
+       draw(q, S, P){
+         const x = 330, y = 112 + 3 * Math.sin(S.t * 2), vt = vtOf(POSE_K[0]), D = 85 * Math.min(1, (P.v / vt) ** 2), R = 85 - D;
+         place(q, 'dv', x, y, {s: 1.15});
+         q('ar').innerHTML = `<circle cx="${x}" cy="${y}" r="4" fill="${WHITE}"/>` + arr(x, y, x, y + 85, RED, 'weight', x + 8, y + 80) + (D > 3 ? arr(x, y, x, y - D, BLUE, 'air resistance', x + 8, y - D + 5) : '') +
+           (R > 3 ? arr(x + 110, y, x + 110, y + R, LILAC, 'resultant', x + 118, y + R - 2) : '') +
+           tag(470, 58, R > 3 ? 'Weight > drag: still accelerating' : 'Drag = weight: resultant zero, terminal speed', 1);
+       }},
+     read: P => { const vt = vtOf(POSE_K[0]), f = Math.min(1, (P.v / vt) ** 2); return `v = ${P.v} m s⁻¹ · drag = ${Math.round(f * 100)}% of weight · a = ${(G * (1 - f)).toFixed(1)} m s⁻²`; }},
+
     {name:'Terminal speed', dur:16, wind:'up', build: () => img('diverA', 'dv') + '<g data-k="ar"></g><g data-k="gr"></g>',
+     P0: {pose: 0}, ctl: [{k:'pose', seg:['Belly to earth', 'Head down']}, {btn:'Start the fall again'}],
      f(q, t){
        const T = 14, vt = 55, v = t => vt * Math.tanh(9.8 * Math.min(t, T) * 1.25 / vt), vn = v(t), x = 200, y = 128;
        place(q, 'dv', x, y + 2 * Math.sin(t * 3), {s: 1.1});
@@ -1383,90 +1457,194 @@ const THEME = (function(){
        const gx = 520, gy = 40, gw = 250, gh = 140, X = u => gx + gw * u / T, Y = u => gy + gh - gh * u / 60;
        let pts = ''; for (let u = 0; u <= Math.min(t, T) + 1e-6; u += .2) pts += `${X(u).toFixed(1)},${Y(v(u)).toFixed(1)} `;
        q('gr').innerHTML = `<rect x="${gx}" y="${gy}" width="${gw}" height="${gh}" rx="8" fill="rgba(10,25,45,.55)"/><line x1="${gx}" y1="${Y(vt)}" x2="${gx + gw}" y2="${Y(vt)}" stroke="${GOLD}" stroke-dasharray="5 4" opacity=".8"/><polyline points="${pts}" fill="none" stroke="${WHITE}" stroke-width="3"/><text x="${gx + 8}" y="${gy + 16}" class="al" fill="${WHITE}">v</text><text x="${gx + gw - 12}" y="${gy + gh - 6}" class="al" fill="${WHITE}">t</text>`;
-     }},
+     },
+     live: {
+       init: () => ({t: 0, v: 0, h: [[0, 0]]}),
+       step(S, dt, P){ const k = POSE_K[P.pose]; for (let i = 0; i < 10; i++) { const d = dt * 1.4 / 10; S.v += (G - k / DIVER_M * S.v * S.v) * d; S.t += d; } S.h.push([S.t, S.v]); if (S.h.length > 600) S.h.shift(); ambSpeed = 0.3 + S.v / 60; },
+       draw(q, S, P){
+         const x = 200, y = 128, vt = vtOf(POSE_K[P.pose]), D = (S.v / vt) ** 2;
+         place(q, 'dv', x, y + 2 * Math.sin(S.t * 3), {s: 1.1, r: P.pose ? 70 : 0});
+         q('ar').innerHTML = arr(x, y + 10, x, y + 70, RED, 'weight', x + 8, y + 66) + (D > .02 ? arr(x, y - 10, x, y - 10 - 60 * Math.min(D, 1.4), BLUE, 'drag', x + 8, y - 6 - 60 * Math.min(D, 1.4)) : '') +
+           tag(20, 58, `v = ${S.v.toFixed(0)} m s⁻¹`, 1) + tag(20, 84, Math.abs(1 - D) < .02 ? 'Terminal speed: drag = weight' : D < 1 ? 'Drag < weight: speeding up' : 'Drag > weight: slowing down', 1);
+         const W = 20, t1 = Math.max(W, S.t), gx = 520, gy = 40, gw = 250, gh = 140, X = u => gx + gw * (u - (t1 - W)) / W, Y = u => gy + gh - gh * Math.min(u, 100) / 100;
+         const pts = S.h.filter(p => p[0] >= t1 - W).map(p => `${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' ');
+         q('gr').innerHTML = `<rect x="${gx}" y="${gy}" width="${gw}" height="${gh}" rx="8" fill="rgba(10,25,45,.55)"/>${[vtOf(POSE_K[0]), vtOf(POSE_K[1])].map((u, i) => `<line x1="${gx}" y1="${Y(u)}" x2="${gx + gw}" y2="${Y(u)}" stroke="${GOLD}" stroke-dasharray="5 4" opacity="${i === P.pose ? .9 : .3}"/>`).join('')}<polyline points="${pts}" fill="none" stroke="${WHITE}" stroke-width="3"/><text x="${gx + 8}" y="${gy + 16}" class="al" fill="${WHITE}">v</text><text x="${gx + gw - 12}" y="${gy + gh - 6}" class="al" fill="${WHITE}">t</text>`;
+       }},
+     read: (P, S) => { const vt = vtOf(POSE_K[P.pose]); return `${P.pose ? 'Head down' : 'Belly to earth'}: terminal speed ≈ ${f0(vt)} m s⁻¹ (${f0(vt * 3.6)} km h⁻¹)${S ? ' · now ' + f0(S.v) + ' m s⁻¹' : ''}`; }},
+
     {name:'Docking', dur:14, wind:'up', build: () => img('diverA', 'a') + img('diverB', 'b') + '<g data-k="ar"></g>',
-     f(q, t){
-       /* A: 80 kg at +3 m s⁻¹, B: 60 kg at -1 m s⁻¹ (relative to the camera); they link at t = 6 and move on at +1.29 */
-       const tc = 6, sc = 22, vc = (80 * 3 - 60) / 140;
-       const xa = t < tc ? 350 - 3 * sc * (tc - t) : 350 + vc * sc * (t - tc), xb = t < tc ? 452 + 1 * sc * (tc - t) : 452 + vc * sc * (t - tc);
-       place(q, 'a', xa, 140, {s: .95}); place(q, 'b', xb, 138, {s: .95});
+     P0: {mA: 80, mB: 60, uA: 3, uB: -1}, ctl: [{k:'mA', min:50, max:110, step:5, label:'Mass A', unit:'kg'}, {k:'mB', min:50, max:110, step:5, label:'Mass B', unit:'kg'},
+       {k:'uA', min:1, max:5, step:0.5, label:'Velocity A', unit:'m s⁻¹'}, {k:'uB', min:-3, max:0.5, step:0.5, label:'Velocity B', unit:'m s⁻¹'}, {btn:'Dock'}],
+     f(q, t, P){
+       const tc = 6, sc = 22, pA = P.mA * P.uA, pB = P.mB * P.uB, vc = (pA + pB) / (P.mA + P.mB), gap = 102;
+       const meet = P.uA > P.uB, xc = 401;
+       /* positions chosen so that, if they meet, contact happens at t = tc around x = 401 */
+       const xa = meet ? (t < tc ? xc - gap / 2 - P.uA * sc * (tc - t) : xc - gap / 2 + vc * sc * (t - tc)) : 350 + P.uA * sc * (t - tc);
+       const xb = meet ? (t < tc ? xc + gap / 2 - P.uB * sc * (tc - t) : xc + gap / 2 + vc * sc * (t - tc)) : 452 + P.uB * sc * (t - tc);
+       const sA = .75 + .25 * P.mA / 80, sB = .75 + .25 * P.mB / 80;
+       place(q, 'a', xa, 140, {s: .95 * sA}); place(q, 'b', xb, 138, {s: .95 * sB});
+       const k = 1 / 4;
        let s = '';
-       if (t < tc) s += arr(xa, 96, xa + 240 / 4, 96, GOLD, '240', xa + 64, 100) + arr(xb, 96, xb - 60 / 4, 96, GOLD, '60', xb - 42, 100);
-       else s += arr((xa + xb) / 2 - 20, 96, (xa + xb) / 2 - 20 + 180 / 4, 96, GOLD, '180 kg m s⁻¹', (xa + xb) / 2 + 30, 100);
-       q('ar').innerHTML = s + tag(20, 58, t < tc ? 'Before: p = 240 - 60 = 180 kg m s⁻¹' : 'After: (80 + 60) × 1.29 = 180 kg m s⁻¹', 1) + tag(20, 205, 'Momentum conserved; kinetic energy is not', seg(t, 9, 10));
-     }},
+       if (t < tc || !meet) s += arr(xa, 96, xa + pA * k, 96, GOLD, f0(pA), xa + pA * k + 6, 100) + (Math.abs(pB) > 2 ? arr(xb, 96, xb + pB * k, 96, GOLD, f0(pB), pB < 0 ? xb + pB * k - 34 : xb + pB * k + 6, 100) : '');
+       else s += arr((xa + xb) / 2 - 20, 96, (xa + xb) / 2 - 20 + (pA + pB) * k, 96, GOLD, `${f0(pA + pB)} kg m s⁻¹`, (xa + xb) / 2 - 10 + (pA + pB) * k, 100);
+       const KEb = .5 * P.mA * P.uA ** 2 + .5 * P.mB * P.uB ** 2, KEa = .5 * (P.mA + P.mB) * vc * vc;
+       q('ar').innerHTML = s + tag(20, 58, !meet ? 'A is not catching B: they never meet' : t < tc ? `Before: p = ${f0(pA)} + (${f0(pB)}) = ${f0(pA + pB)} kg m s⁻¹` : `After: (${P.mA} + ${P.mB}) × ${vc.toFixed(2)} = ${f0(pA + pB)} kg m s⁻¹`, 1) +
+         (meet ? tag(20, 205, `Momentum conserved; kinetic energy ${f0(KEb)} J → ${f0(KEa)} J`, seg(t, 9, 10)) : '');
+     },
+     read: P => { const p = P.mA * P.uA + P.mB * P.uB, v = p / (P.mA + P.mB), KEb = .5 * P.mA * P.uA ** 2 + .5 * P.mB * P.uB ** 2, KEa = .5 * (P.mA + P.mB) * v * v;
+       return P.uA <= P.uB ? 'A must move faster than B to catch it' : `p = ${f0(p)} kg m s⁻¹ before and after · v after = ${v.toFixed(2)} m s⁻¹ · kinetic energy lost ${f0(KEb - KEa)} J (${Math.round((1 - KEa / KEb) * 100)}%)`; }},
+
     {name:'Canopy open', dur:14, wind:'up', build: () => img('chute', 'ch') + img('diverA', 'dv') + img('jumper', 'ju') + '<g data-k="ar"></g>',
-     f(q, t){
-       const open = seg(t, 2.5, 4), x = 400;
+     P0: {dt: 2}, ctl: [{k:'dt', min:1, max:5, step:0.5, label:'Opening time', unit:'s'}, {btn:'Deploy again'}],
+     f(q, t, P){
+       const o1 = 2.5 + P.dt * .75, open = seg(t, 2.5, o1), x = 400, a = (55 - 5) / P.dt;
        const fy = t < 2.5 ? lerp(-40, 150, seg(t, 0, 2.5)) : 150;
-       const y = t < 2.5 ? fy : lerp(150, 168, seg(t, 4, 14)) + (t > 2.5 && t < 4.5 ? 6 * Math.sin((t - 2.5) * 14) * (1 - seg(t, 2.5, 4.5)) : 0);
+       const y = t < 2.5 ? fy : lerp(150, 168, seg(t, o1, 14)) + (t > 2.5 && t < o1 + .5 ? 6 * Math.sin((t - 2.5) * 14 / P.dt * 2) * (1 - seg(t, 2.5, o1 + .5)) : 0);
        place(q, 'dv', x, fy, {a: 1 - seg(t, 2.6, 3.0), s: .9});
        place(q, 'ju', x, y, {a: seg(t, 2.6, 3.0)});
-       const cs = lerp(.15, 1, ease(open)) * (1 + .08 * Math.sin(seg(t, 3.5, 5) * Math.PI));
+       const cs = lerp(.15, 1, ease(open)) * (1 + .08 * Math.sin(seg(t, o1 - .5, o1 + 1) * Math.PI));
        place(q, 'ch', x - 2, y - 30 - 46 * cs, {s: cs, a: seg(t, 2.6, 3.0)});
-       q('ar').innerHTML = (t > 4.5 ? `<g opacity="${seg(t, 4.5, 5.5).toFixed(2)}">${arr(x + 45, y + 10, x + 45, y - 50, GREEN, 'tension', x + 52, y - 44)}${arr(x - 45, y - 10, x - 45, y + 50, RED, 'weight', x - 105, y + 46)}</g>` : '') +
-         tag(20, 58, t < 2.5 ? 'Freefall at about 55 m s⁻¹' : t < 5 ? 'Canopy opens: a large upward resultant' : 'Slow and steady: tension ≈ weight', 1);
-     }},
-    {name:'Spiral turn', dur:18, wind:'', build: () => '<ellipse cx="400" cy="128" rx="230" ry="52" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="7 6" opacity=".75"/>' + img('chute', 'ch', 105, 65) + img('jumper', 'ju', 36, 42) + '<g data-k="ar"></g>',
+       const Lt = t < o1 ? 50 * (1 + a / G) / 3 : 50;
+       q('ar').innerHTML = (t > 2.6 ? `<g opacity="${seg(t, 2.6, 3.2).toFixed(2)}">${arr(x + 45, y + 10, x + 45, y + 10 - Lt, GREEN, 'tension', x + 52, y + 4 - Lt)}${arr(x - 45, y - 10, x - 45, y + 40, RED, 'weight', x - 105, y + 36)}</g>` : '') +
+         tag(20, 58, t < 2.5 ? 'Freefall at about 55 m s⁻¹' : t < o1 ? `Opening: mean deceleration ≈ ${a.toFixed(0)} m s⁻² (${(a / G).toFixed(1)} g)` : 'Slow and steady at about 5 m s⁻¹: tension ≈ weight', 1);
+     },
+     read: P => { const a = 50 / P.dt; return `55 → 5 m s⁻¹ in ${P.dt} s · mean deceleration ${a.toFixed(0)} m s⁻² = ${(a / G).toFixed(1)} g · mean tension ≈ ${(1 + a / G).toFixed(1)} × weight`; }},
+
+    {name:'Spiral turn', dur:18, wind:'', build: () => '<ellipse data-k="orb" cx="400" cy="128" rx="230" ry="52" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="7 6" opacity=".75"/>' + img('chute', 'ch', 105, 65) + img('jumper', 'ju', 36, 42) + '<g data-k="ar"></g>',
+     P0: {r: 50, v: 10}, ctl: [{k:'r', min:20, max:80, step:5, label:'Radius', unit:'m'}, {k:'v', min:6, max:16, step:1, label:'Speed', unit:'m s⁻¹'}],
      f(q, t){
-       const th = -Math.PI / 2 + seg(t, 0, 16) * Math.PI * 2 * 1.25, cx = 400, cy = 128, rx = 230, ry = 52;
-       const x = cx + rx * Math.cos(th), y = cy + ry * Math.sin(th), depth = (Math.sin(th) + 1) / 2, s = .75 + .35 * depth;
-       place(q, 'ju', x, y + 6 * s, {s}); place(q, 'ch', x, y - 44 * s, {s, r: -12 * Math.cos(th)});
-       const tx = -rx * Math.sin(th), ty = ry * Math.cos(th), L = Math.hypot(tx, ty), toC = Math.hypot(cx - x, cy - y);
-       q('ar').innerHTML = `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff"/>` + arr(x, y + 10, x + tx / L * 60, y + 10 + ty / L * 60, BLUE, 'v') + arr(x, y + 10, x + (cx - x) / toC * 55, y + 10 + (cy - y) / toC * 55, RED, '') + tag(20, 58, 'Resultant force points to the centre of the turn', seg(t, 2, 3));
-     }},
-    {name:'Landing', dur:14, wind:'', build: () => `<path d="M-400 182 L0 182 Q200 172 400 180 T800 178 L1200 178 L1200 260 L-400 260Z" fill="#F2DDA4"/><path d="M-400 176 L0 176 Q200 168 400 175 T800 172 L1200 172 L1200 184 L800 184 Q600 178 400 184 T0 186 L-400 186Z" fill="#7FD3D8" opacity=".85"/>${[60, 120, 720].map(px => `<g transform="translate(${px},184)"><path d="M0 0 Q4 -30 2 -58" stroke="#6B4A2B" stroke-width="5" fill="none"/>${[-60, -20, 20, 60, 100].map(a => `<path d="M2 -58 q${(30 * Math.cos(a * Math.PI / 180)).toFixed(1)} ${(-12 + 22 * Math.sin(a * Math.PI / 180)).toFixed(1)} ${(46 * Math.cos(a * Math.PI / 180)).toFixed(1)} ${(14 + 20 * Math.sin(a * Math.PI / 180)).toFixed(1)}" stroke="#2E7D4F" stroke-width="5" fill="none" stroke-linecap="round"/>`).join('')}</g>`).join('')}` + img('chute', 'ch', 120, 74) + img('jumper', 'ju', 44, 51) + '<g data-k="fx"></g><g data-k="gr"></g>',
-     f(q, t){
+       const th = -Math.PI / 2 + seg(t, 0, 16) * Math.PI * 2 * 1.25;
+       this.pose(q, th, 230, 52, 55, 0);
+       q('ar').innerHTML += tag(20, 58, 'Resultant force points to the centre of the turn', seg(t, 2, 3));
+     },
+     pose(q, th, rx, ry, aL, bank){
+       const cx = 400, cy = 128, x = cx + rx * Math.cos(th), y = cy + ry * Math.sin(th), depth = (Math.sin(th) + 1) / 2, s = .75 + .35 * depth;
+       const o = q('orb'); if (o) { o.setAttribute('rx', rx); o.setAttribute('ry', ry); }
+       place(q, 'ju', x, y + 6 * s, {s, r: -bank * Math.cos(th) * .6}); place(q, 'ch', x, y - 44 * s, {s, r: -(12 + bank) * Math.cos(th)});
+       const tx = -rx * Math.sin(th), ty = ry * Math.cos(th), L = Math.hypot(tx, ty), toC = Math.hypot(cx - x, cy - y) || 1;
+       q('ar').innerHTML = `<circle cx="${cx}" cy="${cy}" r="4" fill="#fff"/>` + arr(x, y + 10, x + tx / L * 60, y + 10 + ty / L * 60, BLUE, 'v') + arr(x, y + 10, x + (cx - x) / toC * aL, y + 10 + (cy - y) / toC * aL, RED, '');
+     },
+     live: {
+       init: () => ({th: -Math.PI / 2, t: 0}),
+       step(S, dt, P){ S.th += P.v / P.r * dt * 1.6; S.t += dt; },
+       draw(q, S, P){
+         const rx = 120 + (P.r - 20) * 2.6, ry = rx * .23, a = P.v * P.v / P.r, bank = Math.atan(a / G) * 180 / Math.PI;
+         ST[6].pose(q, S.th, rx, ry, 20 + a * 8, bank * .5);
+         q('ar').innerHTML += tag(20, 58, `a = v²/r = ${a.toFixed(1)} m s⁻², towards the centre`, 1);
+       }},
+     read: P => { const a = P.v * P.v / P.r; return `T = ${(2 * Math.PI * P.r / P.v).toFixed(1)} s · a = ${a.toFixed(2)} m s⁻² · F = ma = ${f0(90 * a)} N for 90 kg · bank angle tan θ = v²/(rg) → ${f0(Math.atan(a / G) * 180 / Math.PI)}°`; }},
+
+    {name:'Landing', dur:14, wind:'', build: () => `<path d="M-2000 182 L0 182 Q200 172 400 180 T800 178 L2800 178 L2800 2000 L-2000 2000Z" fill="#F2DDA4"/><path d="M-2000 176 L0 176 Q200 168 400 175 T800 172 L2800 172 L2800 184 L800 184 Q600 178 400 184 T0 186 L-2000 186Z" fill="#7FD3D8" opacity=".85"/>${[60, 120, 720].map(px => `<g transform="translate(${px},184)"><path d="M0 0 Q4 -30 2 -58" stroke="#6B4A2B" stroke-width="5" fill="none"/>${[-60, -20, 20, 60, 100].map(a => `<path d="M2 -58 q${(30 * Math.cos(a * Math.PI / 180)).toFixed(1)} ${(-12 + 22 * Math.sin(a * Math.PI / 180)).toFixed(1)} ${(46 * Math.cos(a * Math.PI / 180)).toFixed(1)} ${(14 + 20 * Math.sin(a * Math.PI / 180)).toFixed(1)}" stroke="#2E7D4F" stroke-width="5" fill="none" stroke-linecap="round"/>`).join('')}</g>`).join('')}` + img('chute', 'ch', 120, 74) + img('jumper', 'ju', 44, 51) + '<g data-k="fx"></g><g data-k="gr"></g>',
+     P0: {u: 5, knees: 1}, ctl: [{k:'u', min:3, max:7, step:0.5, label:'Landing speed', unit:'m s⁻¹'}, {k:'knees', seg:['Stiff legs', 'Knees bent', 'Roll']}, {btn:'Land again'}],
+     f(q, t, P){
        const td = 8, k = seg(t, 0, td), x = lerp(180, 430, ease(k)), yb = lerp(-30, 186, k < 1 ? 1 - Math.pow(1 - k, 1.6) : 1);   /* yb = feet */
-       const bend = t > td ? Math.sin(seg(t, td, td + .8) * Math.PI) * 6 : 0;
-       place(q, 'ju', x, yb - 25 + bend);
+       const dT = LAND_DT[P.knees], bend = t > td ? Math.sin(seg(t, td, td + .4 + dT * 2) * Math.PI) * (2 + dT * 18) : 0;
+       place(q, 'ju', x, yb - 25 + bend, {sy: 1 - bend / 120});
        const col = seg(t, td + .5, td + 3.5);
        place(q, 'ch', x + 75 * col, lerp(yb - 25 - 70, yb - 12, col), {sy: lerp(1, .32, col), s: lerp(1, .95, col), r: 6 * col, a: 1 - .1 * col});
        let fx = '';
        if (t > td && t < td + 2) for (let i = 0; i < 6; i++) { const u = seg(t, td, td + 2), a = (i / 5) * Math.PI; fx += `<circle cx="${(x + Math.cos(a) * 30 * u).toFixed(1)}" cy="${(yb + 2 - Math.sin(a) * 8 * u).toFixed(1)}" r="${(5 + 4 * u).toFixed(1)}" fill="#E8D3A0" opacity="${(1 - u).toFixed(2)}"/>`; }
-       q('fx').innerHTML = fx + tag(20, 58, t < td ? 'Approach: horizontal and vertical speed to lose' : 'Bend the knees: longer Δt, smaller force for the same Δp', 1);
-       const gx = 590, gy = 46, gw = 190, gh = 100, p = seg(t, td, td + 2);
-       if (p > 0) { let pts = ''; for (let u = 0; u <= p + 1e-6; u += .02) pts += `${(gx + 10 + (gw - 20) * u).toFixed(1)},${(gy + gh - 12 - (gh - 30) * Math.sin(Math.PI * u)).toFixed(1)} `;
-         q('gr').innerHTML = `<rect x="${gx}" y="${gy}" width="${gw}" height="${gh}" rx="8" fill="rgba(10,25,45,.6)"/><polyline points="${pts}" fill="none" stroke="${GOLD}" stroke-width="3"/><text x="${gx + 10}" y="${gy + 18}" class="al" fill="#fff">F</text><text x="${gx + gw - 16}" y="${gy + gh - 4}" class="al" fill="#fff">t</text><text x="${gx + gw / 2}" y="${gy + gh - 18}" class="al" fill="${GOLD}" text-anchor="middle">area = Δp</text>`; }
+       const dp = LAND_M * P.u, F = dp / dT + LAND_M * G;
+       q('fx').innerHTML = fx + tag(20, 58, t < td ? 'Approach: speed to lose on landing' : `Landing with ${LAND_NAME[P.knees]}: Δt = ${dT} s, mean force ≈ ${(F / (LAND_M * G)).toFixed(1)} × weight`, 1);
+       /* F-t panel: area = Δp is the same for every landing; a shorter Δt means a taller pulse */
+       const gx = 590, gy = 46, gw = 190, gh = 100, p = seg(t, td, td + 2), tmax = 0.7, Fmax = LAND_M * 7 / 0.04 * Math.PI / 2;
+       if (p > 0) { const Fp = dp / dT * Math.PI / 2; let pts = ''; for (let u = 0; u <= p + 1e-6; u += .01) { const tt = u * tmax, ff = tt < dT ? Fp * Math.sin(Math.PI * tt / dT) : 0; pts += `${(gx + 10 + (gw - 20) * u).toFixed(1)},${(gy + gh - 12 - (gh - 30) * Math.min(1, ff / Fmax)).toFixed(1)} `; }
+         q('gr').innerHTML = `<rect x="${gx}" y="${gy}" width="${gw}" height="${gh}" rx="8" fill="rgba(10,25,45,.6)"/><polyline points="${pts}" fill="none" stroke="${GOLD}" stroke-width="3"/><text x="${gx + 10}" y="${gy + 18}" class="al" fill="#fff">F</text><text x="${gx + gw - 16}" y="${gy + gh - 4}" class="al" fill="#fff">t</text><text x="${gx + gw / 2 + 20}" y="${gy + 30}" class="al" fill="${GOLD}" text-anchor="middle">area = Δp = ${f0(dp)} N s</text>`; }
        else q('gr').innerHTML = '';
-     }},
+     },
+     read: P => { const dT = LAND_DT[P.knees], dp = LAND_M * P.u, F = dp / dT + LAND_M * G; return `90 kg at ${P.u} m s⁻¹: Δp = ${f0(dp)} N s · ${LAND_NAME[P.knees]}, Δt = ${dT} s · mean ground force ≈ ${f0(F)} N (${(F / (LAND_M * G)).toFixed(1)} × weight)`; }},
   ];
+  const PV = ST.map(s => Object.assign({}, s.P0));          /* current control values per station */
 
   /* ambient layer: clouds drift sideways (cruise) or rise past the falling diver; wind streaks in freefall */
   function ambient(i, now){
-    const W = ST[i].wind, tt = (now - amb0) / 1000; let s = '';
+    const W = ST[i].wind, tt = (now - amb0) / 1000 * ambSpeed, [vx, vy, vw, vh] = vb; let s = '';
     if (!W) return '';
-    for (let k = 0; k < 7; k++) {
+    const n = Math.round(7 * Math.max(1, vh / VH) * Math.max(1, vw / VW));
+    for (let k = 0; k < n; k++) {
       let x, y;
-      if (W === 'h') { x = ((k * 173 - tt * (40 + k * 6)) % 1000 + 1000) % 1000 - 100; y = 30 + (k * 47) % 180; }
-      else { x = (k * 131) % 820 - 10; y = ((k * 61 - tt * (55 + k * 9)) % 360 + 360) % 360 - 60; y = 290 - y - 60; }
-      s += `<g opacity="${(.55 + .06 * (k % 4)).toFixed(2)}"><ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${40 + k * 6}" ry="${11 + k}" fill="#fff"/><ellipse cx="${(x + 26).toFixed(1)}" cy="${(y - 8).toFixed(1)}" rx="${22 + k * 3}" ry="${10 + k}" fill="#fff"/></g>`;
+      if (W === 'h') { x = vx + ((k * 173 - tt * (40 + (k % 7) * 6)) % (vw + 200) + vw + 200) % (vw + 200) - 100; y = vy + 20 + (k * 47) % Math.max(60, vh - 40); }
+      else { x = vx + (k * 131) % (vw + 20) - 10; const span = vh + 120; y = vy + span - 60 - ((k * 61 - tt * (55 + (k % 7) * 9)) % span + span) % span; }
+      s += `<g opacity="${(.55 + .06 * (k % 4)).toFixed(2)}"><ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${40 + (k % 7) * 6}" ry="${11 + (k % 7)}" fill="#fff"/><ellipse cx="${(x + 26).toFixed(1)}" cy="${(y - 8).toFixed(1)}" rx="${22 + (k % 7) * 3}" ry="${10 + (k % 7)}" fill="#fff"/></g>`;
     }
-    if (W === 'up') for (let k = 0; k < 10; k++) { const x = (k * 89 + 30) % 800, y = ((k * 53 - tt * 260) % 300 + 300) % 300 - 40; s += `<line x1="${x}" y1="${y.toFixed(1)}" x2="${x}" y2="${(y + 34).toFixed(1)}" stroke="#fff" stroke-width="2" opacity=".35"/>`; }
+    if (W === 'up') { const m = Math.round(10 * vw / VW); for (let k = 0; k < m; k++) { const x = vx + (k * 89 + 30) % vw, span = vh + 80, y = vy + ((k * 53 - tt * 260) % span + span) % span - 40; s += `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x.toFixed(1)}" y2="${(y + 34).toFixed(1)}" stroke="#fff" stroke-width="2" opacity=".35"/>`; } }
     return s;
   }
   let layers = null;
   const q = id => layers.story.querySelector(`[data-k="${id}"]`);
   function build(i){ layers.story.innerHTML = ST[i].build(); }
-  function draw(i, t){ ST[i].f(q, t); }
+  function draw(i, t){ ST[i].f(q, t, PV[i]); }
   function frame(now){
-    if (!el.isConnected || document.hidden) { raf = requestAnimationFrame(frame); return; }
-    const t = Math.max(0, (now - t0) / 1000);
+    if (!el.isConnected || document.hidden) { raf = requestAnimationFrame(frame); lastT = now; return; }
+    const dt = Math.min(0.05, Math.max(0, (now - (lastT || now)) / 1000)); lastT = now;
     layers.amb.innerHTML = ambient(cur, now);
-    if (!held[cur]) { tNow = Math.min(t, ST[cur].dur); draw(cur, tNow); if (tNow >= ST[cur].dur) held[cur] = true; }
+    if (mode === 'live' && ST[cur].live) { ST[cur].live.step(LS, dt, PV[cur]); ST[cur].live.draw(q, LS, PV[cur]); updRead(); }
+    else if (!held[cur]) { const t = Math.max(0, (now - t0) / 1000); tNow = Math.min(t, ST[cur].dur); draw(cur, tNow); if (tNow >= ST[cur].dur) held[cur] = true; }
     raf = requestAnimationFrame(frame);
+  }
+
+  /* ---- Try it panel ---- */
+  function ctlHTML(i){
+    const s = ST[i], P = PV[i];
+    return `<div class="sctl-h"><b>Try it</b><button type="button" class="sctl-x" data-tog aria-expanded="true" aria-label="Hide the controls">−</button></div><div class="sctl-b">` + s.ctl.map(c => {
+      if (c.btn) return `<button type="button" class="sbtn" data-act>${c.btn}</button>`;
+      if (c.seg) return `<div class="sseg" role="radiogroup" aria-label="${c.k}">${c.seg.map((o, j) => `<button type="button" role="radio" aria-checked="${P[c.k] === j}" data-seg="${c.k}" data-v="${j}">${o}</button>`).join('')}</div>`;
+      return `<label class="srng"><span>${c.label}: <b data-o="${c.k}">${P[c.k]} ${c.unit}</b></span><input type="range" min="${c.min}" max="${c.max}" step="${c.step}" value="${P[c.k]}" data-k="${c.k}"></label>`;
+    }).join('') + `<button type="button" class="sbtn ghost" data-story>Replay the story</button></div><div class="sread" data-read aria-live="polite"></div>`;
+  }
+  function updRead(){ const r = el.querySelector('[data-read]'); if (r) r.textContent = ST[cur].read(PV[cur], mode === 'live' ? LS : null); }
+  function touched(kind){
+    const s = ST[cur];
+    if (s.live && kind !== 'act') { if (mode !== 'live') { mode = 'live'; LS = s.live.init(PV[cur]); held[cur] = true; } }
+    else if (s.live && kind === 'act') { mode = 'live'; LS = s.live.init(PV[cur]); }
+    else { mode = 'story'; held[cur] = false; t0 = performance.now(); if (reduced()) { held[cur] = true; draw(cur, s.dur); } }
+    updRead();
+  }
+  function mountCtl(i){
+    const box = el.querySelector('.sctl'); box.innerHTML = ctlHTML(i); updRead();
+    box.querySelectorAll('input[data-k]').forEach(inp => inp.addEventListener('input', () => {
+      const c = ST[cur].ctl.find(x => x.k === inp.dataset.k); PV[cur][c.k] = +inp.value;
+      box.querySelector(`[data-o="${c.k}"]`).textContent = `${PV[cur][c.k]} ${c.unit}`;
+      if (ST[cur].live) touched('slide'); else { updRead(); if (held[cur] || mode === 'story') { /* redraw the final frame with the new numbers; Play button replays */ if (held[cur]) draw(cur, ST[cur].dur); } }
+    }));
+    box.querySelectorAll('[data-seg]').forEach(b => b.addEventListener('click', () => {
+      PV[cur][b.dataset.seg] = +b.dataset.v; box.querySelectorAll(`[data-seg="${b.dataset.seg}"]`).forEach(x => x.setAttribute('aria-checked', x === b ? 'true' : 'false'));
+      if (ST[cur].live) touched('slide'); else { updRead(); if (held[cur]) draw(cur, ST[cur].dur); }
+    }));
+    box.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => touched('act')));
+    box.querySelector('[data-story]').addEventListener('click', () => { mode = 'story'; PV[cur] = Object.assign({}, ST[cur].P0); mountCtl(cur); held[cur] = false; t0 = performance.now(); if (reduced()) { held[cur] = true; draw(cur, ST[cur].dur); } ambSpeed = 1; });
+    box.querySelector('[data-tog]').addEventListener('click', e => { const c = box.classList.toggle('min'); e.currentTarget.textContent = c ? '+' : '−'; e.currentTarget.setAttribute('aria-expanded', c ? 'false' : 'true'); e.currentTarget.setAttribute('aria-label', c ? 'Show the controls' : 'Hide the controls'); });
+  }
+
+  /* ---- layout: full-screen hero that docks to a slim bar on scroll ---- */
+  function fitView(){
+    const w = svg.clientWidth || el.clientWidth, h = svg.clientHeight || el.clientHeight; if (!w || !h) return;
+    if (h / w > VH / VW) { const H = VW * h / w; vb = [0, -(H - VH) * .55, VW, H]; }
+    else { const Wv = VH * w / h; vb = [-(Wv - VW) / 2, 0, Wv, VH]; }
+    svg.setAttribute('viewBox', vb.map(v => v.toFixed(1)).join(' '));
+  }
+  function dock(){
+    if (!wrap || wrap.offsetParent === null) return;
+    const r = wrap.getBoundingClientRect(), want = r.bottom < 118;
+    if (want !== docked) { docked = want; el.classList.toggle('docked', docked); wrap.classList.toggle('isdocked', docked); requestAnimationFrame(() => { fitView(); moveCam(false); }); }
   }
   function mount(host){
     el = host;
-    el.innerHTML = `<div class="sky" aria-hidden="true"></div><svg class="sdsvg" viewBox="0 0 ${VW} ${VH}" preserveAspectRatio="xMidYMid meet"><g class="amb"></g><g class="story"></g></svg>
-      <div class="caption"><span class="badge" id="bcap"></span><span class="badge alt" id="balt"></span></div><div class="brack" id="brack"></div><div class="stamp" id="bstamp"></div>`;
+    wrap = document.createElement('div'); wrap.className = 'scenewrap'; el.parentNode.insertBefore(wrap, el); wrap.appendChild(el);
+    el.removeAttribute('aria-hidden');
+    el.innerHTML = `<div class="sky" aria-hidden="true"></div><svg class="sdsvg" aria-hidden="true" viewBox="0 0 ${VW} ${VH}" preserveAspectRatio="xMidYMid meet"><g class="amb"></g><g class="story"></g></svg>
+      <div class="caption" aria-hidden="true"><span class="badge" id="bcap"></span><span class="badge alt" id="balt"></span></div><div class="brack" id="brack" aria-hidden="true"></div><div class="stamp" id="bstamp" aria-hidden="true"></div>
+      <div class="sctl" role="group" aria-label="Try the physics of this stage"></div>
+      <button type="button" class="sdown" aria-label="Scroll down to the lesson">Lesson below <span aria-hidden="true">↓</span></button>`;
     if (S('backdrop')) el.querySelector('.sky').style.backgroundImage = `url(${S('backdrop')})`;
     svg = el.querySelector('svg'); layers = {amb: svg.querySelector('.amb'), story: svg.querySelector('.story')};
-    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => moveCam(false)).observe(el);
+    el.querySelector('.sdown').addEventListener('click', () => { const t = wrap.getBoundingClientRect().bottom + scrollY - 110; scrollTo({top: t, behavior: reduced() ? 'auto' : 'smooth'}); });
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => { fitView(); moveCam(false); }).observe(el);
+    addEventListener('scroll', dock, {passive: true}); addEventListener('resize', dock);
   }
   /* camera: the tall sky image is scaled to the scene width; each station sits lower down it */
   function moveCam(animate){
-    const sky = el.querySelector('.sky'), w = el.clientWidth, h = el.clientHeight, ih = w * 1776 / 896;
+    const sky = el.querySelector('.sky'), w = el.clientWidth, h = el.clientHeight, ih = Math.max(h * 1.2, w * 1776 / 896);
     sky.style.height = ih + 'px';
     const i = Math.max(0, cur), y = (ih - h) * (i / (NS - 1));
     sky.style.transition = animate && !reduced() ? 'transform 1.1s cubic-bezier(.6,.05,.3,1)' : 'none';
@@ -1475,15 +1653,15 @@ const THEME = (function(){
   function set(stage, o){
     const i = Math.max(0, Math.min(NS - 1, stage - 1));
     if (i === cur) return;
-    cur = i; moveCam(true);
+    cur = i; mode = 'story'; LS = null; ambSpeed = 1; fitView(); moveCam(true);
     el.querySelector('#bcap').textContent = `Stage ${i + 1} · ${ST[i].name}`;
     el.querySelector('#balt').textContent = ALT[i] ? `${ALT[i].toLocaleString('en-GB')} m` : 'Beach';
-    cancelAnimationFrame(raf); build(i);
+    cancelAnimationFrame(raf); build(i); mountCtl(i);
     if (reduced()) { held[i] = true; draw(i, ST[i].dur); tNow = ST[i].dur; layers.amb.innerHTML = ambient(i, performance.now()); return; }
     if (held[i]) { draw(i, ST[i].dur); tNow = ST[i].dur; }
     else draw(i, 0);
     t0 = performance.now() + 900;                         /* let the camera arrive first */
-    raf = requestAnimationFrame(frame);
+    lastT = 0; raf = requestAnimationFrame(frame);
   }
   function renderRack(status){
     const box = el.querySelector('#brack');
@@ -1495,14 +1673,16 @@ const THEME = (function(){
     if (!el) return;
     const st = el.querySelector('#bstamp');
     const show = (txt, cls) => { st.textContent = txt; st.className = 'stamp show ' + cls; clearTimeout(event._t); event._t = setTimeout(() => st.className = 'stamp', 1900); };
-    if (type === 'correct') { el.classList.remove('glow'); void el.offsetWidth; el.classList.add('glow'); }
-    else if (type === 'wrong') { el.classList.remove('jolt'); void el.offsetWidth; el.classList.add('jolt'); }
+    if (type === 'correct') { el.classList.remove('glow', 'wobble'); void el.offsetWidth; el.classList.add('glow'); }
+    else if (type === 'wrong') { el.classList.remove('jolt', 'wobble'); void el.offsetWidth; el.classList.add('jolt', 'wobble'); }
     else if (type === 'secure') show('STAGE SECURE', 'up');
     else if (type === 'nearly') show('NEARLY THERE', 'boss');
     else if (type === 'revisit') show('REVISIT', 'down');
   }
-  function seek(t){ cancelAnimationFrame(raf); held[cur] = true; tNow = Math.min(t, ST[cur].dur); draw(cur, tNow); layers.amb.innerHTML = ambient(cur, performance.now()); }
-  return {mount, set, event, seek, rack: renderRack, BANDS: ST.map(s => s.name), now: () => ({cur, t: tNow, held: Object.assign({}, held)})};
+  function seek(t){ cancelAnimationFrame(raf); mode = 'story'; held[cur] = true; tNow = Math.min(t, ST[cur].dur); draw(cur, tNow); layers.amb.innerHTML = ambient(cur, performance.now()); }
+  /* test hooks: set a control and run the live simulation for a number of seconds without animation */
+  function tryIt(vals, secs){ Object.assign(PV[cur], vals); mountCtl(cur); if (ST[cur].live) { mode = 'live'; LS = ST[cur].live.init(PV[cur]); for (let k = 0; k < (secs || 0) * 30; k++) ST[cur].live.step(LS, 1 / 30, PV[cur]); ST[cur].live.draw(q, LS, PV[cur]); } else { held[cur] = true; draw(cur, ST[cur].dur); } updRead(); cancelAnimationFrame(raf); return el.querySelector('[data-read]').textContent; }
+  return {mount, set, event, seek, tryIt, rack: renderRack, BANDS: ST.map(s => s.name), now: () => ({cur, t: tNow, mode, docked, held: Object.assign({}, held)})};
 })();
 
 /* ================= Skydive Palm: revision core (Quest engine v2, revision mode) =================
